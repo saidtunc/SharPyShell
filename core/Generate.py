@@ -152,7 +152,9 @@ class Generate():
         if self.__obfuscate:
             fmt_note += '\nObfuscation applied: identifier randomization, string encoding, junk code'
         print(fmt_note)
-        print('\nUpload it to the target server and let\'s start having some fun :) \n\n')
+        print('\nNote: Classic ASP does not support "interact" mode.')
+        print('Use asp_interact.py instead:')
+        print('  python3 asp_interact.py -u http://target/sharpyshell.asp -p yourpassword\n')
 
     def generate(self):
         if self.__file_format == 'asp':
