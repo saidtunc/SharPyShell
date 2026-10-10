@@ -3,6 +3,18 @@ import string
 import re
 
 
+VBS_KEYWORDS = {
+    'and', 'as', 'boolean', 'byref', 'byte', 'byval', 'call', 'case',
+    'class', 'const', 'date', 'dim', 'do', 'double', 'each', 'else',
+    'elseif', 'empty', 'end', 'enum', 'eqv', 'error', 'exit', 'explicit',
+    'false', 'for', 'function', 'get', 'goto', 'if', 'in', 'integer',
+    'is', 'let', 'like', 'long', 'loop', 'me', 'mod', 'new', 'next',
+    'not', 'nothing', 'null', 'on', 'option', 'or', 'preserve', 'private',
+    'public', 'redim', 'rem', 'resume', 'select', 'set', 'single',
+    'static', 'step', 'stop', 'sub', 'then', 'to', 'true', 'until',
+    'variant', 'wend', 'while', 'with', 'xor',
+}
+
 CSHARP_KEYWORDS = {
     'abstract', 'as', 'base', 'bool', 'break', 'byte', 'case', 'catch',
     'char', 'checked', 'class', 'const', 'continue', 'decimal', 'default',
@@ -381,3 +393,87 @@ def convert_aspx_to_asmx(aspx_code, class_name, dummy_method):
     result += 'public string ' + dummy_method + '() { return ""; }\n\n'
     result += '}\n'
     return result
+
+
+VBSCRIPT_IDENTIFIERS = [
+    'B64ToBytes', 'BytesToB64', 'BytesToStr', 'StrToBytes', 'XorStr',
+    'pwd', 'payload', 'inBytes', 'inText', 'encText', 'encBytes',
+    'cmd', 'sh', 'ex', 'output', 'kl', 'txt', 'key',
+]
+
+
+class VBScriptObfuscator:
+
+    def __init__(self):
+        self._used_names = set()
+
+    def _random_name(self, min_len=5, max_len=12):
+        while True:
+            first = random.choice(string.ascii_letters)
+            rest_len = random.randint(min_len - 1, max_len - 1)
+            rest = ''.join(random.choices(
+                string.ascii_letters + string.digits, k=rest_len
+            ))
+            name = first + rest
+            if name not in self._used_names and name.lower() not in VBS_KEYWORDS:
+                self._used_names.add(name)
+                return name
+
+    def _preserve_strings(self, code):
+        strings = {}
+        counter = [0]
+        def _repl(m):
+            token = '\x00STR' + str(counter[0]) + '\x00'
+            strings[token] = m.group(0)
+            counter[0] += 1
+            return token
+        code = re.sub(r'"(?:[^"]|"")*"', _repl, code)
+        return code, strings
+
+    def _restore_strings(self, code, strings):
+        for token, original in strings.items():
+            code = code.replace(token, original)
+        return code
+
+    def randomize_identifiers(self, code):
+        code, strings = self._preserve_strings(code)
+        for ident in sorted(VBSCRIPT_IDENTIFIERS, key=len, reverse=True):
+            new_name = self._random_name()
+            code = re.sub(r'\b' + re.escape(ident) + r'\b', new_name, code)
+        code = self._restore_strings(code, strings)
+        return code
+
+    def encode_password(self, code, password):
+        chr_expr = ' & '.join('Chr(' + str(ord(c)) + ')' for c in password)
+        code = code.replace('"' + password + '"', chr_expr)
+        return code
+
+    def add_junk_code(self, code):
+        junk = []
+        for _ in range(random.randint(2, 4)):
+            junk.append(self._generate_junk_function())
+        junk_block = '\n\n'.join(junk)
+        last_close = code.rfind('%>')
+        if last_close >= 0:
+            code = code[:last_close] + '\n' + junk_block + '\n' + code[last_close:]
+        return code
+
+    def _generate_junk_function(self):
+        name = self._random_name(6, 14)
+        param = self._random_name(3, 6)
+        var1 = self._random_name(3, 6)
+        var2 = self._random_name(3, 6)
+        val = str(random.randint(1, 255))
+        return (
+            'Function ' + name + '(' + param + ')\n'
+            '    Dim ' + var1 + ' : ' + var1 + ' = Len(' + param + ')\n'
+            '    Dim ' + var2 + ' : ' + var2 + ' = ' + var1 + ' Xor ' + val + '\n'
+            '    ' + name + ' = ' + var2 + '\n'
+            'End Function'
+        )
+
+    def obfuscate(self, code, password):
+        code = self.encode_password(code, password)
+        code = self.randomize_identifiers(code)
+        code = self.add_junk_code(code)
+        return code

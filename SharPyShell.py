@@ -11,6 +11,7 @@ examples:
     python SharPyShell.py generate -p 'somepassword'
     python SharPyShell.py generate -p 'somepassword' -f ashx -o raw -e aes256
     python SharPyShell.py generate -p 'somepassword' -f asmx --no-obfuscate
+    python SharPyShell.py generate -p 'somepassword' -f asp
     python SharPyShell.py interact -u 'http://target.url/sharpyshell.aspx' -p 'somepassword'
     python SharPyShell.py interact -u 'http://target.url/handler.ashx' -p 'somepassword'
 '''
@@ -61,12 +62,13 @@ def create_generate_parser(subparsers):
         '-f',
         '--format',
         help='\tThe file format/extension for the webshell agent'
-             '\nAllowed values: \'aspx\', \'ashx\', \'asmx\''
+             '\nAllowed values: \'aspx\', \'ashx\', \'asmx\', \'asp\''
              '\n  aspx: ASP.NET Web Form (default)'
              '\n  ashx: Generic HTTP Handler'
              '\n  asmx: Web Service'
+             '\n  asp:  Classic ASP (standalone cmd execution)'
              '\nDefault \'aspx\'',
-        choices=['aspx', 'ashx', 'asmx'],
+        choices=['aspx', 'ashx', 'asmx', 'asp'],
         default='aspx',
         metavar='\b'
     )
