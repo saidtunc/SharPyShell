@@ -12,8 +12,45 @@ SharPyShell supports only C# web applications that runs on .NET Framework >= 2.0
 
 ```
 python3 SharPyShell.py generate -p somepassword
+python3 SharPyShell.py generate -p somepassword -f ashx -o raw -e aes256
+python3 SharPyShell.py generate -p somepassword -f asmx --no-obfuscate
 python3 SharPyShell.py interact -u http://target.url/sharpyshell.aspx -p somepassword
+python3 SharPyShell.py interact -u http://target.url/handler.ashx  -p somepassword
 ```
+
+### Generate options
+
+| Flag | Values | Description |
+|------|--------|-------------|
+| `-p`, `--password` | string | Shared key for encrypting the channel (**required**) |
+| `-e`, `--encryption` | `xor`, `aes128`, `aes256` | Channel encryption scheme (default `xor`) |
+| `-o`, `--obfuscator` | `raw`, `encrypted_dll`, `encrypted_dll_ulong_compression` | Obfuscation strategy for the payload (default `encrypted_dll`) |
+| `-f`, `--format` | `aspx`, `ashx`, `asmx` | Output file extension / handler type (default `aspx`) |
+| `--no-obfuscate` | flag | Disable post-processing obfuscation of the generated code |
+| `--output` | path | Custom output path |
+| `--endian-type` | `default`, `little`, `big` | Endianess for `encrypted_dll_ulong_compression` |
+
+## Enhanced Obfuscation
+
+The webshell generator applies an additional post-processing obfuscation pass on top of the chosen obfuscator. This pass is enabled by default and can be turned off with `--no-obfuscate`.
+
+Each generation produces a different-looking payload. The pass performs:
+
+  - **Identifier randomization** &mdash; every user-defined variable, method, and class name is replaced with a fresh random identifier on every build, while leaving .NET framework names and property accesses intact.
+  - **String literal encoding** &mdash; sensitive strings (the password hash, `SharPyShell`, `ExecRuntime`, `SharPy`, `Run`) are encoded as `new string(new char[]{...})` so they are not visible to simple pattern scanners.
+  - **Reflection-based compiler** &mdash; for the `raw` obfuscator, `new CSharpCodeProvider()` is replaced with `Activator.CreateInstance(Type.GetType(...))` and the `Microsoft.CSharp` import is dropped. The type name itself is also stored as an encoded char array.
+  - **Junk code injection** &mdash; realistic-looking dead methods and variables are injected to disrupt structural signatures.
+  - **Decoy comments** &mdash; misleading inline comments are scattered through the code.
+
+## Alternative File Extensions
+
+By default the generated agent is an `.aspx` Web Form. Two additional handler types are supported, both processed by the standard .NET pipeline on IIS:
+
+  - `-f aspx` &mdash; ASP.NET Web Form (default). Classic `<%@ Page %>` with a `Page_Load` entry point.
+  - `-f ashx` &mdash; Generic HTTP Handler. The agent is emitted as a `<%@ WebHandler %>` class implementing `IHttpHandler.ProcessRequest`. Same request model as `.aspx`; the client needs no changes &mdash; just point `interact -u` at the `.ashx` URL.
+  - `-f asmx` &mdash; Web Service. The agent is emitted as a `<%@ WebService %>` class that handles POST requests inside its constructor using `HttpContext.Current`, then calls `Response.Flush()` and `ApplicationInstance.CompleteRequest()` to short-circuit the SOAP pipeline. A dummy `[WebMethod]` is included so the file still looks like a legitimate service when browsed. The client URL is the same as for `.aspx` / `.ashx`.
+
+Class names and the dummy WebMethod name are generated to resemble ordinary application code (for example `DataHandler42`, `ResourceLoader`, `GetStatus`), so the file blends into a typical IIS application tree.
 
 ## Requirements
 
